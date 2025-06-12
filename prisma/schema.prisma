@@ -19,7 +19,7 @@ model User{
     password      String
     username      String  @unique
     role          String  @default("user")
-    purcahse   Purchase[]
+    purcahse      Purchase[]
 }
 
 model Course{

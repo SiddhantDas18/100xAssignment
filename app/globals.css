@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer components{
+  .devs{
+    @apply bg-gradient-to-b from-[#71a4f3] to-[#2c61e0] text-transparent bg-clip-text;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
