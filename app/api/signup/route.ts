@@ -10,7 +10,6 @@ export async function POST(req:NextRequest){
         const ifExist = await prismaClient.user.findUnique({
             where:{
                 email:email,
-                username:username
             }
         })
 
@@ -31,14 +30,14 @@ export async function POST(req:NextRequest){
         })
 
         return NextResponse.json({
-            message:"User created successfully",
+            msg:"User created successfully",
             user:user
         })
 
 
     }catch(e){
         return NextResponse.json({
-            message:(e as Error).message,
+            msg:(e as Error).message,
         })
     }
     

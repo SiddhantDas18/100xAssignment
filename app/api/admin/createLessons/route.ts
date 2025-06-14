@@ -23,7 +23,7 @@ export async function POST(req:NextRequest){
             }, { status: 403 })
         }
 
-        const {title, courseId} = await req.json()
+        const {title, courseId, videoUrl} = await req.json();
 
         const ifExist = await prismaClient.lesson.findFirst({
             where:{
@@ -41,7 +41,8 @@ export async function POST(req:NextRequest){
         const createLesson = await prismaClient.lesson.create({
             data:{
                 title:title,
-                courseId:courseId
+                courseId:courseId,
+                videoUrl: videoUrl
             }
         })
 

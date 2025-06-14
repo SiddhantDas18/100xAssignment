@@ -4,9 +4,8 @@ import middleware from "@/middleware/middleware";
 
 export async function GET(req:NextRequest){
     try{
-
         const authresponse = await middleware(req);
-
+        console.log("Auth Response Headers:", authresponse.headers);
         const userData = authresponse.headers.get("x-user-id");
         
         if(!userData) {
@@ -17,25 +16,49 @@ export async function GET(req:NextRequest){
 
         const [role, userId] = userData.split(':')
         const user = Number(userId)
+        console.log("Parsed User ID:", user);
 
-        const myCourses = await prismaClient.purchase.findMany({
-            where:{
-                userId:user
+        // Fetch purchases with course details
+        const purchases = await prismaClient.purchase.findMany({
+            where: {
+                userId: user
+            },
+            include: {
+                course: {
+                    include: {
+                        lessons: true // Include lessons for each course
+                    }
+                }
             }
-        })
+        });
+        console.log("Fetched Purchases:", purchases);
 
-        if(myCourses.length==0){
-            return NextResponse.json({
-                msg:"Empty Bro"
-            })
-        }
+        // Transform the data to match the frontend Course interface
+        const courses = purchases.map(purchase => ({
+            id: purchase.courseId.toString(),
+            title: purchase.course.title,
+            description: purchase.course.description,
+            imageUrl: '/default-course-image.jpg', // Default image since it's not in schema
+            price: purchase.amount,
+            originalPrice: purchase.course.price,
+            discount: 0, // Calculate if needed
+            progress: 0, // You can implement progress tracking later
+            lessons: purchase.course.lessons.map(lesson => ({
+                id: lesson.id,
+                title: lesson.title,
+                videoUrl: lesson.videoUrl
+            }))
+        }));
+        console.log("Transformed Courses:", courses);
 
         return NextResponse.json({
-            msg:"Your courses",
-            course:myCourses
-        })
+            courses: courses
+        });
 
-    }catch(e){
-        msg:(e as Error).message
+    } catch(e) {
+        console.error('Error in myCourses:', e);
+        return NextResponse.json({
+            msg: (e as Error).message
+        }, { status: 500 });
     }
 }

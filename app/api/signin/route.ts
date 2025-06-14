@@ -6,10 +6,13 @@ const SECRET = process.env.SECRET;
 
 export async function POST(req:NextRequest){
     try{
+        if (!SECRET) {
+            throw new Error("JWT_SECRET is not defined");
+        }
 
         const {email,password} = await req.json();
 
-        const user = await prismaClient.user.findUnique({
+        const user = await prismaClient.user.findFirst({
             where:{
                 email:email
             }
@@ -17,7 +20,7 @@ export async function POST(req:NextRequest){
 
         if(!user){
             return NextResponse.json({
-                message:"User not found",
+                msg:"User not found",
             })
         }
 
@@ -25,19 +28,25 @@ export async function POST(req:NextRequest){
 
         if(!isPasswordCorrect){
             return NextResponse.json({
-                message:"Invalid password",
+                msg:"Invalid password",
             })
         }
 
+        const token = jwt.sign({
+            id: user.id,
+            role: user.role
+        }, SECRET)
+
         return NextResponse.json({
-            message:"Login successful",
-            user:user
+            msg: "Login successful",
+            user: user,
+            token: token
         })
 
 
     }catch(e){
         return NextResponse.json({
-            message:(e as Error).message,
+            msg:(e as Error).message,
         })
     }
     

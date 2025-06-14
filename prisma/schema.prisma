@@ -13,36 +13,121 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
-    id            Int     @id @default(autoincrement()) @unique
-    email         String  @unique
-    password      String
-    username      String  @unique
-    role          String  @default("user")
-    purcahse      Purchase[]
+model User {
+  id            Int       @id @default(autoincrement()) @unique
+  email         String    @unique
+  password      String
+  username      String    @unique
+  role          String    @default("user")
+  purchases     Purchase[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  profile       Profile?
+  progress      Progress[]
+  courses       Course[]  // Courses authored by this user
 }
 
-model Course{
-  id          Int     @id @default(autoincrement()) @unique
-  title       String
-  description String
-  price       Int
-  lesson      Lesson[]
-  purchase    Purchase[]
+model Profile {
+  id            Int       @id @default(autoincrement()) @unique
+  userId        Int       @unique
+  user          User      @relation(fields: [userId], references: [id])
+  bio           String?
+  avatar        String?
+  socialLinks   Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
-model Lesson{
-  id          Int     @id @default(autoincrement()) @unique
-  course      Course  @relation(fields: [courseId], references: [id])
-  courseId    Int
-  title       String
+model Category {
+  id            Int       @id @default(autoincrement()) @unique
+  name          String    @unique
+  slug          String    @unique
+  description   String?
+  courses       Course[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
-model Purchase{
-  id                Int     @id @default(autoincrement()) @unique
-  userId            Int
-  courseId          Int
-  purhcaseAmount    Int
-  user              User    @relation(fields: [userId],references: [id])
-  course            Course  @relation(fields: [courseId], references: [id])
+model Course {
+  id            Int       @id @default(autoincrement()) @unique
+  title         String
+  slug          String?   @unique
+  description   String
+  price         Int
+  imageUrl      String?
+  lessons       Lesson[]
+  purchases     Purchase[]
+  categories    Category[]
+  status        String    @default("draft") // draft, published, archived
+  featured      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  author        User?      @relation(fields: [authorId], references: [id])
+  authorId      Int?
+}
+
+model Lesson {
+  id            Int       @id @default(autoincrement()) @unique
+  course        Course    @relation(fields: [courseId], references: [id])
+  courseId      Int
+  title         String
+  slug          String?   @unique
+  content       Content[]
+  videoUrl      String?
+  description   String?
+  thumbnailUrl  String?
+  parentId      Int?
+  parent        Lesson?   @relation("Sublessons", fields: [parentId], references: [id], onDelete: Cascade)
+  sublessons    Lesson[]  @relation("Sublessons")
+  order         Int       @default(0)
+  status        String    @default("draft") // draft, published, archived
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  progress      Progress[]
+}
+
+model Content {
+  id            Int       @id @default(autoincrement()) @unique
+  lesson        Lesson    @relation(fields: [lessonId], references: [id])
+  lessonId      Int
+  type          String    // text, video, image, code, quiz
+  content       String    // JSON string containing the actual content
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Media {
+  id            Int       @id @default(autoincrement()) @unique
+  url           String
+  type          String    // image, video, document
+  name          String
+  size          Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Purchase {
+  id            Int       @id @default(autoincrement()) @unique
+  userId        Int
+  courseId      Int
+  amount        Int
+  status        String    @default("pending") // pending, completed, failed, refunded
+  user          User      @relation(fields: [userId], references: [id])
+  course        Course    @relation(fields: [courseId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Progress {
+  id            Int       @id @default(autoincrement()) @unique
+  userId        Int
+  lessonId      Int
+  status        String    @default("not_started") // not_started, in_progress, completed
+  user          User      @relation(fields: [userId], references: [id])
+  lesson        Lesson    @relation(fields: [lessonId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
 }

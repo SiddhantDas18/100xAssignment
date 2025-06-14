@@ -23,28 +23,25 @@ export async function GET(req:NextRequest){
         const openCourse = await prismaClient.course.findUnique({
             where:{
                 id:courseId
+            },
+            include: {
+                lesson: true
             }
         })
 
         if(!openCourse){
             return NextResponse.json({
                 msg:"No course found with this name"
-            })
+            }, { status: 404 })
         }
 
-        const lessons = await prismaClient.lesson.findMany({
-            where:{
-                courseId:courseId
-            }
-        })
-
         return NextResponse.json({
-            course:lessons
+            course: openCourse
         })
 
     }catch(e){
         return NextResponse.json({
             msg:(e as Error).message
-        })
+        }, { status: 500 })
     }
 }

@@ -23,13 +23,14 @@ export async function POST(req:NextRequest){
             }, { status: 403 })
         }
 
-        const {title,description,price} = await req.json();
+        const {title,description,price, imageUrl} = await req.json();
 
         const createCourse = await prismaClient.course.create({
             data:{
                 title:title,
                 description:description,
-                price:price
+                price:price,
+                imageUrl: imageUrl
             }
         })
 

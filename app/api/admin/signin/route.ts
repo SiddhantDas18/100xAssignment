@@ -12,7 +12,7 @@ export async function POST(req:NextRequest){
 
         const {email,password} = await req.json();
 
-        const user = await prismaClient.user.findUnique({
+        const user = await prismaClient.user.findFirst({
             where:{
                 email:email
             }
