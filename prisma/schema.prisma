@@ -16,7 +16,7 @@ datasource db {
 model User {
   id            Int       @id @default(autoincrement()) @unique
   email         String    @unique
-  password      String
+    password      String
   username      String    @unique
   role          String    @default("user")
   purchases     Purchase[]

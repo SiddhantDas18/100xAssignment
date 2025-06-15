@@ -21,7 +21,8 @@ export async function GET(req:NextRequest){
         // Fetch purchases with course details
         const purchases = await prismaClient.purchase.findMany({
             where: {
-                userId: user
+                userId: user,
+                status: "completed" // Only fetch completed purchases
             },
             include: {
                 course: {

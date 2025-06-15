@@ -54,8 +54,10 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
                 headers: { Authorization: `Bearer ${token}` }
               });
               const isAlreadyPurchased = myCoursesResponse.data.courses.some((c: any) => c.id === course.id.toString());
+              console.log('isAlreadyPurchased:', isAlreadyPurchased); // Debug log
               if (isAlreadyPurchased) {
                 setPurchaseStatus('alreadyPurchased');
+                console.log('Purchase Status set to:', 'alreadyPurchased'); // Debug log
               }
             } catch (myCoursesError) {
               console.error("Error checking purchased courses:", myCoursesError);
@@ -91,14 +93,15 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
         return;
       }
 
-      const response = await axios.post('/api/purchase', {
+      const response = await axios.post<{ success: boolean; url?: string; msg?: string }>('/api/stripe/checkout', {
         courseId: course?.id,
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.data.success) {
-        setPurchaseStatus('success');
+      if (response.data.success && response.data.url) {
+        // Redirect to Stripe Checkout page
+        window.location.href = response.data.url;
       } else {
         if (response.data.msg === "Course already purchased") {
           setPurchaseStatus('alreadyPurchased');
@@ -152,6 +155,8 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
     );
   }
 
+  console.log('Current purchaseStatus before render:', purchaseStatus); // Debug log
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{course.title}</h1>
@@ -172,7 +177,7 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
           </motion.button>
         )}
 
-        {purchaseStatus === 'idle' && course.lessons && course.lessons.length === 0 && (
+        {purchaseStatus === 'idle' && (
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -211,8 +216,7 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={redirectToDashboard}
-            className="bg-gray-400 text-white px-6 py-3 rounded-lg shadow-md cursor-not-allowed"
-            disabled
+            className="bg-gray-400 text-white px-6 py-3 rounded-lg shadow-md"
           >
             Already Purchased / View Course
           </motion.button>
@@ -229,14 +233,14 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
         )}
       </div>
 
-      {course.lessons && course.lessons.length > 0 && (
-        <h2 className="text-2xl font-semibold mb-4">Lessons</h2>
-      )}
+      {(purchaseStatus === 'alreadyPurchased' || purchaseStatus === 'success') && course.lessons && course.lessons.length > 0 && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <h2 className="text-2xl font-semibold mb-4">Lessons</h2>
         {course.lessons?.map((lesson) => (
           <LessonCard key={lesson.id} lesson={lesson} courseId={courseId} />
         ))}
       </div>
+      )}
     </div>
   );
 } 

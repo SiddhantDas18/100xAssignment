@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { verifyToken } from '@/lib/auth';
+import middleware from "@/middleware/middleware";
 
 const prisma = new PrismaClient();
 
 // GET /api/admin/categories
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-    }
+    const authResponse = await middleware(request as any);
+    const userData = authResponse.headers.get('x-user-id');
 
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== 'admin') {
+    if (!userData || userData.split(':')[0] !== 'ADMIN') {
       return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 
@@ -34,13 +31,10 @@ export async function GET(request: Request) {
 // POST /api/admin/categories
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-    }
+    const authResponse = await middleware(request as any);
+    const userData = authResponse.headers.get('x-user-id');
 
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== 'admin') {
+    if (!userData || userData.split(':')[0] !== 'ADMIN') {
       return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 
@@ -81,13 +75,10 @@ export async function POST(request: Request) {
 // PUT /api/admin/categories/[id]
 export async function PUT(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-    }
+    const authResponse = await middleware(request as any);
+    const userData = authResponse.headers.get('x-user-id');
 
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== 'admin') {
+    if (!userData || userData.split(':')[0] !== 'ADMIN') {
       return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 
@@ -129,13 +120,10 @@ export async function PUT(request: Request) {
 // DELETE /api/admin/categories/[id]
 export async function DELETE(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-    }
+    const authResponse = await middleware(request as any);
+    const userData = authResponse.headers.get('x-user-id');
 
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== 'admin') {
+    if (!userData || userData.split(':')[0] !== 'ADMIN') {
       return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 

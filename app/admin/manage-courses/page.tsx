@@ -41,6 +41,11 @@ export default function ManageCourses() {
         imageUrl: '',
         categoryId: null as number | null,
     });
+    const [newCourseTitle, setNewCourseTitle] = useState('');
+    const [newCourseDescription, setNewCourseDescription] = useState('');
+    const [newCoursePrice, setNewCoursePrice] = useState<number | ''>('');
+    const [newCourseImageUrl, setNewCourseImageUrl] = useState('');
+    const [newCourseCategoryId, setNewCourseCategoryId] = useState<number | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -48,30 +53,54 @@ export default function ManageCourses() {
         fetchCategories();
     }, []);
 
-    const fetchCourses = async () => {
-        try {
-            const response = await axios.get<{ success: boolean; courses: Course[] }>('/api/getCourse');
-            if (response.data.success) {
-                setCourses(response.data.courses);
-            } else {
-                setError(response.data.message || "Failed to fetch courses.");
+        const fetchCourses = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    router.push('/signin');
+                    return;
+                }
+
+            const response = await axios.get<{
+                message: string; success: boolean; courses: Course[] 
+}>('/api/getCourse', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+                if (response.data.success) {
+                    setCourses(response.data.courses);
+                } else {
+                    setError(response.data.message || "Failed to fetch courses.");
+                }
+            } catch (err) {
+                console.error("Error fetching courses:", err);
+                setError("An unexpected error occurred while fetching courses.");
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error("Error fetching courses:", err);
-            setError("An unexpected error occurred while fetching courses.");
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
 
     const fetchCategories = async () => {
         try {
-            const response = await axios.get('/api/admin/categories');
-            if (response.data.success) {
-                setCategories(response.data.categories);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/signin');
+                return;
+            }
+            const response = await axios.get('/api/admin/categories', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if ((response.data as { success: boolean; categories: Category[] }).success) {
+                setCategories((response.data as { categories: Category[] }).categories);
+            } else {
+                setError((response.data as { message?: string }).message || "Failed to fetch categories.");
             }
         } catch (error) {
             console.error('Error fetching categories:', error);
+            setError("An unexpected error occurred while fetching categories.");
         }
     };
 
@@ -148,19 +177,26 @@ export default function ManageCourses() {
                 },
             });
 
-            if (response.data.success) {
-                setMessage(response.data.message || "Course updated successfully!");
+            if ((response.data as { success: boolean }).success) {
+                setMessage((response.data as { message?: string }).message || "Course updated successfully!");
                 resetForm();
                 fetchCourses(); // Refresh course list
             } else {
-                setError(response.data.message || "Failed to update course.");
+                setError((response.data as { message?: string }).message || "Failed to update course.");
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error updating course:", err);
-            if (axios.isAxiosError(err) && err.response) {
-                setError(err.response.data.msg || "An unexpected error occurred.");
+            if (err.response) {
+                console.error("Response data:", err.response.data);
+                console.error("Response status:", err.response.status);
+                console.error("Response headers:", err.response.headers);
+                setError(err.response.data.msg || "Failed to update course");
+            } else if (err.request) {
+                console.error("Request data:", err.request);
+                setError("Failed to update course. No response from server.");
             } else {
-                setError("An unexpected error occurred.");
+                console.error("Error message:", err.message);
+                setError("An unexpected error occurred");
             }
         } finally {
             setLoading(false);
@@ -184,21 +220,90 @@ export default function ManageCourses() {
 
             const response = await axios.delete('/api/admin/deleteCourse', {
                 headers: { Authorization: `Bearer ${token}` },
-                data: { courseId }
+                params: { courseId }
             });
 
-            if (response.data.success) {
+            if ((response.data as { success: boolean }).success) {
                 setMessage("Course deleted successfully!");
                 fetchCourses(); // Refresh course list
             } else {
-                setError(response.data.message || "Failed to delete course.");
+                setError((response.data as { message?: string }).message || "Failed to delete course.");
+            }
+        } catch (err: any) {
+            console.error("Error deleting course:", err);
+            if (err.response) {
+                console.error("Response data:", err.response.data);
+                console.error("Response status:", err.response.status);
+                console.error("Response headers:", err.response.headers);
+                setError(err.response.data.msg || "Failed to delete course");
+            } else if (err.request) {
+                console.error("Request data:", err.request);
+                setError("Failed to delete course. No response from server.");
+            } else {
+                console.error("Error message:", err.message);
+                setError("An unexpected error occurred");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateCourse = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setMessage('');
+        setError('');
+
+        if (!newCourseTitle || !newCourseDescription || newCoursePrice === '' || !newCourseImageUrl || newCourseCategoryId === null) {
+            setError("All fields for new course are required.");
+            setLoading(false);
+            return;
+        }
+
+        if (isNaN(Number(newCoursePrice)) || Number(newCoursePrice) <= 0) {
+            setError("Price must be a positive number.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/signin');
+                return;
+            }
+
+            const response = await axios.post('/api/admin/createCourse', {
+                title: newCourseTitle,
+                description: newCourseDescription,
+                price: Number(newCoursePrice),
+                imageUrl: newCourseImageUrl,
+                categoryId: newCourseCategoryId,
+            }, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if ((response.data as { success: boolean }).success) {
+                setMessage((response.data as { message?: string }).message || "Course created successfully!");
+                setNewCourseTitle('');
+                setNewCourseDescription('');
+                setNewCoursePrice('');
+                setNewCourseImageUrl('');
+                setNewCourseCategoryId(null);
+                fetchCourses(); // Refresh course list
+            } else {
+                setError((response.data as { message?: string }).message || "Failed to create course.");
             }
         } catch (err) {
-            console.error("Error deleting course:", err);
-            if (axios.isAxiosError(err) && err.response) {
-                setError(err.response.data.msg || "An unexpected error occurred.");
+            console.error("Error creating course:", err);
+            if (err && typeof err === 'object' && 'isAxiosError' in err) {
+                setError((err as any).response?.data?.msg || (err as unknown as Error).message || "Failed to create course");
+            } else if (err instanceof Error) {
+                setError(err.message);
             } else {
-                setError("An unexpected error occurred.");
+                setError("An unexpected error occurred");
             }
         } finally {
             setLoading(false);
@@ -230,152 +335,136 @@ export default function ManageCourses() {
     }
 
     return (
-        <div className="min-h-screen w-screen bg-gradient-to-b from-[#f7f9fd] to-[#d4ddee] p-6">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-gray-900 mb-8">Manage Courses</h1>
+        <div className="container mx-auto px-4 py-6 max-w-6xl">
+            <div className="mb-8">
+                <h1 className="text-2xl font-semibold text-gray-800 mb-6">Manage Courses</h1>
                 
-                <div className="bg-white rounded-lg shadow-xl p-8 mb-8">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">{isEditing ? 'Edit Course' : 'Create New Course'}</h2>
-                    {message && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">{message}</div>}
-                    {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
-
-                    <form onSubmit={isEditing ? handleUpdateCourse : ((e) => { e.preventDefault(); router.push('/admin/create-course'); })} className="space-y-6">
+                {/* Create New Course Section */}
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+                    <h2 className="text-xl font-medium text-gray-700 mb-4">Create New Course</h2>
+                    <form className="space-y-4" onSubmit={handleCreateCourse}>
                         <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700">Course Title</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
                             <input
                                 type="text"
-                                id="title"
-                                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                value={isEditing ? editCourseTitle : ''}
-                                onChange={(e) => setEditCourseTitle(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter course title"
+                                value={newCourseTitle}
+                                onChange={(e) => setNewCourseTitle(e.target.value)}
                                 disabled={loading}
                             />
                         </div>
+                        
                         <div>
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                             <textarea
-                                id="description"
-                                rows={4}
-                                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                value={isEditing ? editCourseDescription : ''}
-                                onChange={(e) => setEditCourseDescription(e.target.value)}
-                                disabled={loading}
-                            ></textarea>
-                        </div>
-                        <div>
-                            <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price</label>
-                            <input
-                                type="number"
-                                id="price"
-                                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                value={isEditing ? editCoursePrice : ''}
-                                onChange={(e) => setEditCoursePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                                placeholder="Enter course description"
+                                value={newCourseDescription}
+                                onChange={(e) => setNewCourseDescription(e.target.value)}
                                 disabled={loading}
                             />
                         </div>
-                        <div>
-                            <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">Image URL (Thumbnail)</label>
-                            <input
-                                type="text"
-                                id="imageUrl"
-                                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                value={isEditing ? editCourseImageUrl : ''}
-                                onChange={(e) => setEditCourseImageUrl(e.target.value)}
-                                disabled={loading}
-                            />
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                                <input
+                                    type="number"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter price"
+                                    value={newCoursePrice}
+                                    onChange={(e) => setNewCoursePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                    disabled={loading}
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (Thumbnail)</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter image URL"
+                                    value={newCourseImageUrl}
+                                    onChange={(e) => setNewCourseImageUrl(e.target.value)}
+                                    disabled={loading}
+                                />
+                            </div>
                         </div>
+                        
                         <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                             <select
-                                id="category"
-                                value={editForm.categoryId || ''}
-                                onChange={(e) => setEditForm({ ...editForm, categoryId: e.target.value ? Number(e.target.value) : null })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={newCourseCategoryId || ''}
+                                onChange={(e) => setNewCourseCategoryId(e.target.value === '' ? null : Number(e.target.value))}
+                                disabled={loading}
                             >
                                 <option value="">Select a category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                    </option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={category.id}>{category.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="flex gap-4">
-                            <button
-                                type="submit"
-                                className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={loading}
-                            >
-                                {isEditing ? 'Update Course' : 'Go to Create Course'}
-                            </button>
-                            {isEditing && (
-                                <button
-                                    type="button"
-                                    onClick={resetForm}
-                                    className="flex-1 flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={loading}
-                                >
-                                    Cancel Edit
-                                </button>
-                            )}
-                        </div>
+                        
+                        <button
+                            type="submit"
+                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200"
+                            disabled={loading}
+                        >
+                            Create Course
+                        </button>
                     </form>
                 </div>
 
-                {courses.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                        <h2 className="text-2xl font-semibold text-gray-800 mb-4">No courses found.</h2>
-                        <p className="text-gray-600 mb-8">Start by creating a new course!</p>
-                        <Link
-                            href="/admin/create-course"
-                            className="inline-block bg-blue-500 text-white px-8 py-3 rounded-md hover:bg-blue-600 transition-colors font-medium"
-                        >
-                            Create Course
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {courses.map((course) => (
-                            <div key={course.id} className="bg-white rounded-lg shadow-md p-6">
-                                {course.imageUrl && (
-                                    <div className="mb-4">
-                                        <Image
-                                            src={course.imageUrl}
-                                            alt={course.title}
-                                            width={400}
-                                            height={200}
-                                            className="rounded-md object-cover w-full h-48"
-                                        />
+                {/* Existing Courses List */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-medium text-gray-700 mb-4">Existing Courses</h2>
+                    <div className="space-y-4">
+                        {loading ? (
+                            <div className="text-center py-4">Loading...</div>
+                        ) : error ? (
+                            <div className="text-red-500 text-center py-4">{error}</div>
+                        ) : courses.length === 0 ? (
+                            <div className="text-gray-500 text-center py-4">No courses found</div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {courses.map(course => (
+                                    <div key={course.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-medium text-gray-800">{course.title}</h3>
+                                                <p className="text-gray-600 mt-1">{course.description}</p>
+                                                <p className="text-blue-600 font-medium mt-2">${course.price}</p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                <Link
+                                                    href={`/admin/manage-lessons/${course.id}`}
+                                                    className="px-3 py-1 text-sm text-purple-600 border border-purple-600 rounded hover:bg-purple-50"
+                                                >
+                                                    Manage Lessons
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleEditClick(course)}
+                                                    className="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteCourse(course.id)}
+                                                    className="px-3 py-1 text-sm text-red-600 border border-red-600 rounded hover:bg-red-50"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                <h2 className="text-xl font-semibold text-gray-800 mb-2">{course.title}</h2>
-                                <p className="text-gray-600 mb-4">{course.description}</p>
-                                <p className="text-gray-700 font-medium">Price: ${course.price}</p>
-                                <div className="flex gap-2 mt-4">
-                                    <button
-                                        onClick={() => handleEditClick(course)}
-                                        className="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors text-sm"
-                                    >
-                                        Edit Course
-                                    </button>
-                                    <Link
-                                        href={`/admin/manage-lessons/${course.id}`}
-                                        className="flex-1 text-center bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors text-sm"
-                                    >
-                                        Manage Lessons
-                                    </Link>
-                                    <button
-                                        onClick={() => handleDeleteCourse(course.id)}
-                                        className="flex-1 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors text-sm"
-                                    >
-                                        Delete Course
-                                    </button>
-                                </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );
-} 
+}

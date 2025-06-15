@@ -31,19 +31,19 @@ export default function CourseCard({ course }: CourseCardProps) {
     >
       <Link href={`/courses/${course.id}`}>
         <div className="relative h-48">
-          {course.imageUrl ? (
-            <Image
-              src={course.imageUrl}
-              alt={course.title}
-              fill
-              className="object-cover"
-            />
-          ) : (
+        {course.imageUrl ? (
+          <Image
+            src={course.imageUrl}
+            alt={course.title}
+            fill
+            className="object-cover"
+          />
+        ) : (
             <div className="w-full h-full bg-gray-200 flex items-center justify-center">
               <span className="text-gray-400">No image</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
         <div className="p-4">
           {course.category && (
             <span className="inline-block px-2 py-1 text-xs font-semibold text-indigo-600 bg-indigo-100 rounded-full mb-2">

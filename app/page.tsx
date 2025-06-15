@@ -12,17 +12,17 @@ export default function Home() {
 
   useEffect(() => {
     const checkAuthAndCourses = async () => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
           try {
             const response = await axios.get('/api/myCourses', {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (response.data.courses && response.data.courses.length > 0) {
               setHasPurchasedCourses(true);
-              router.push('/dashboard');
-            } else {
+        router.push('/dashboard');
+      } else {
               router.push('/courses');
             }
           } catch (error) {
@@ -31,8 +31,8 @@ export default function Home() {
           }
         } else {
           router.push('/signin');
-        }
       }
+    }
     };
 
     checkAuthAndCourses();
@@ -48,7 +48,7 @@ export default function Home() {
       <div className="text-center">
         <Image src="/kirat.png" alt="Loading" width={100} height={100} className="animate-pulse mx-auto mb-4" />
         <p className="text-lg text-gray-700">Loading your learning journey...</p>
-      </div>
+    </div>
     </motion.div>
   );
 }

@@ -17,6 +17,13 @@ export async function GET(req:NextRequest){
 
         const [role, userId] = userData.split(':')
 
+        // Ensure only administrators can access this route for managing courses
+        if (role !== 'ADMIN') {
+            return NextResponse.json({
+                msg: "Forbidden: Only administrators can access this resource."
+            }, { status: 403 });
+        }
+
         const id = req.nextUrl.pathname.split('/').pop();
         const courseId = Number(id)
         
@@ -25,7 +32,11 @@ export async function GET(req:NextRequest){
                 id:courseId
             },
             include: {
-                lesson: true
+                lessons: {
+                    include: {
+                        content: true,
+                    },
+                },
             }
         })
 

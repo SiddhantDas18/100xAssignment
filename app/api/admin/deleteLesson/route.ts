@@ -4,65 +4,40 @@ import middleware from "@/middleware/middleware";
 
 export async function DELETE(req: NextRequest) {
     try {
-        const authresponse = await middleware(req);
+        const authResponse = await middleware(req);
 
-        const userData = authresponse.headers.get("x-user-id");
-        
-        if (!userData) {
+        const userData = authResponse.headers.get("x-user-id");
+
+        if (!userData || userData.split(':')[0] !== 'ADMIN') {
             return NextResponse.json({
-                msg: "User data not found"
-            }, { status: 401 })
+                msg: "Unauthorized"
+            }, { status: 401 });
         }
 
-        const [role, userId] = userData.split(':');
+        const { searchParams } = new URL(req.url);
+        const lessonId = searchParams.get("lessonId");
 
-        if (role !== 'ADMIN') {
+        if (!lessonId) {
             return NextResponse.json({
-                msg: "Unauthorized: Admin access required"
-            }, { status: 403 })
-        }
-
-        const { lessonId, courseId } = await req.json();
-
-        if (!lessonId || !courseId) {
-            return NextResponse.json({
-                success: false,
-                message: "Lesson ID and Course ID are required."
+                msg: "Lesson ID is required"
             }, { status: 400 });
-        }
-
-        // Verify the lesson belongs to the course and exists
-        const lesson = await prismaClient.lesson.findFirst({
-            where: {
-                id: lessonId,
-                courseId: courseId
-            }
-        });
-
-        if (!lesson) {
-            return NextResponse.json({
-                success: false,
-                message: "Lesson not found or does not belong to this course."
-            }, { status: 404 });
         }
 
         await prismaClient.lesson.delete({
             where: {
-                id: lessonId
-            }
+                id: Number(lessonId),
+            },
         });
 
         return NextResponse.json({
             success: true,
-            message: "Lesson deleted successfully."
-        });
+            message: "Lesson deleted successfully",
+        }, { status: 200 });
 
     } catch (e) {
         console.error("Error deleting lesson:", e);
         return NextResponse.json({
-            success: false,
-            message: "Something went wrong",
-            error: (e as Error).message
+            msg: (e as Error).message || "Something went wrong"
         }, { status: 500 });
     }
 } 

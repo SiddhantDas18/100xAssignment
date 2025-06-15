@@ -35,26 +35,26 @@ export default function CoursesPage() {
         fetchCategories();
     }, []);
 
-    const fetchCourses = async () => {
-        try {
-            const response = await axios.get<{ success: boolean; courses: Course[] }>('/api/getCourse');
-            if (response.data.success) {
-                setCourses(response.data.courses);
-                console.log("Fetched courses:", response.data.courses);
-            } else {
-                setError('Failed to fetch courses.');
+        const fetchCourses = async () => {
+            try {
+                const response = await axios.get<{ success: boolean; courses: Course[] }>('/api/getCourse');
+                if (response.data.success) {
+                    setCourses(response.data.courses);
+                    console.log("Fetched courses:", response.data.courses);
+                } else {
+                    setError('Failed to fetch courses.');
+                }
+            } catch (err: unknown) {
+                console.error('Error fetching courses:', err);
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError('An unknown error occurred.');
+                }
+            } finally {
+                setLoading(false);
             }
-        } catch (err: unknown) {
-            console.error('Error fetching courses:', err);
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('An unknown error occurred.');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
 
     const fetchCategories = async () => {
         try {
@@ -150,11 +150,11 @@ export default function CoursesPage() {
                             transition={{ delay: index * 0.1 }}
                         >
                             <CourseCard
-                                course={course}
-                                isPurchased={false}
-                            />
+                            course={course}
+                            isPurchased={false}
+                        />
                         </motion.div>
-                    ))}
+                    ))}                    
                 </div>
             )}
         </div>

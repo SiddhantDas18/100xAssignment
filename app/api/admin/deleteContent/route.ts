@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prismaClient from "@/lib/db";
 import middleware from "@/middleware/middleware";
 
-export async function PUT(req: NextRequest) {
+export async function DELETE(req: NextRequest) {
     try {
         const authResponse = await middleware(req);
 
@@ -14,42 +14,28 @@ export async function PUT(req: NextRequest) {
             }, { status: 401 });
         }
 
-        const {
-            lessonId,
-            title,
-            videoUrl,
-            description,
-            thumbnailUrl,
-            parentId,
-        } = await req.json();
+        const { searchParams } = new URL(req.url);
+        const contentId = searchParams.get("contentId");
 
-        if (!lessonId || !title) {
+        if (!contentId) {
             return NextResponse.json({
-                msg: "Lesson ID and title are required"
+                msg: "Content ID is required"
             }, { status: 400 });
         }
 
-        const updatedLesson = await prismaClient.lesson.update({
+        await prismaClient.content.delete({
             where: {
-                id: lessonId,
-            },
-            data: {
-                title,
-                videoUrl: videoUrl || null,
-                description: description || null,
-                thumbnailUrl: thumbnailUrl || null,
-                parentId: parentId || null,
+                id: Number(contentId),
             },
         });
 
         return NextResponse.json({
             success: true,
-            message: "Lesson updated successfully",
-            lesson: updatedLesson,
+            message: "Content deleted successfully",
         }, { status: 200 });
 
     } catch (e) {
-        console.error("Error updating lesson:", e);
+        console.error("Error deleting content:", e);
         return NextResponse.json({
             msg: (e as Error).message || "Something went wrong"
         }, { status: 500 });

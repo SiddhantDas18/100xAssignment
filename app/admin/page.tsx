@@ -33,28 +33,22 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const token = localStorage.getItem('token');
-            console.log("Admin Page - Token found:", !!token); // Log if token exists
-            if (!token) {
-                router.push('/signin');
-                return;
-            }
-
             try {
-                const decoded = jwt.decode(token) as DecodedToken;
-                console.log("Admin Page - Decoded token:", decoded);
-                if (decoded && decoded.role && decoded.role.toLowerCase() === 'admin') {
-                    setIsAdmin(true);
-                    // Fetch real-time stats only if admin
-                    fetchDashboardStats(token);
-                } else {
-                    console.warn("Admin Page - User not authorized. Decoded role:", decoded?.role);
-                    setError("You are not authorized to view this page.");
-                    router.push('/dashboard'); // Redirect non-admins
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No token found');
                 }
+
+                const decoded = jwt.decode(token) as DecodedToken;
+                if (!decoded || !decoded.role || decoded.role.toLowerCase() !== 'admin') {
+                    throw new Error('Not authorized');
+                }
+
+                setIsAdmin(true);
+                await fetchDashboardStats(token);
             } catch (err) {
-                console.error("Admin Page - Error decoding token:", err);
-                setError("Authentication failed. Please log in again.");
+                console.error('Admin authentication error:', err);
+                setError(err instanceof Error ? err.message : 'Authentication failed');
                 router.push('/signin');
             } finally {
                 setLoading(false);
@@ -65,27 +59,25 @@ export default function AdminDashboard() {
     }, [router]);
 
     const fetchDashboardStats = async (token: string) => {
-      try {
-        const response = await axios.get<{ success: boolean; stats: DashboardStats }>(
-          '/api/admin/dashboardStats',
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (response.data.success) {
-          setStats(response.data.stats);
-        } else {
-          setError(response.data.message || 'Failed to fetch dashboard stats');
+        try {
+            const response = await axios.get('/api/admin/dashboardStats', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            
+            if ((response.data as { success: boolean }).success) {
+                setStats((response.data as { stats: DashboardStats }).stats);
+            } else {
+                throw new Error((response.data as { message?: string }).message || 'Failed to fetch stats');
+            }
+        } catch (err) {
+            console.error('Error fetching stats:', err);
+            setError('Failed to load dashboard data');
         }
-      } catch (err) {
-        console.error('Error fetching dashboard stats:', err);
-        setError('Error fetching dashboard stats. Please try again.');
-      }
     };
 
     if (loading) {
         return (
-            <div className="h-screen w-screen bg-gradient-to-b from-[#f7f9fd] to-[#d4ddee] flex items-center justify-center">
+            <div className="flex items-center justify-center min-h-screen">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
         );
@@ -93,12 +85,12 @@ export default function AdminDashboard() {
 
     if (error) {
         return (
-            <div className="min-h-screen w-screen bg-gradient-to-b from-[#f7f9fd] to-[#d4ddee] flex items-center justify-center">
-                <div className="text-center">
+            <div className="flex flex-col items-center justify-center min-h-screen">
+                <div className="text-center p-8 bg-white rounded-lg shadow-lg">
                     <p className="text-red-500 text-lg mb-4">{error}</p>
                     <button
                         onClick={() => router.push('/signin')}
-                        className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors"
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                     >
                         Go to Login
                     </button>
@@ -107,142 +99,78 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!isAdmin) {
-        // This case should ideally not be reached due to the redirect above,
-        // but as a fallback, show nothing or a specific message.
-        return null;
-    }
-
-    const statCards = [
-        {
-            title: 'Total Courses',
-            value: stats.totalCourses,
-            icon: '📚',
-            color: 'bg-blue-500',
-        },
-        {
-            title: 'Total Lessons',
-            value: stats.totalLessons,
-            icon: '📝',
-            color: 'bg-green-500',
-        },
-        {
-            title: 'Total Users',
-            value: stats.totalUsers,
-            icon: '👥',
-            color: 'bg-purple-500',
-        },
-        {
-            title: 'Total Revenue',
-            value: `₹${stats.totalRevenue}`,
-            icon: '💰',
-            color: 'bg-yellow-500',
-        },
-    ];
-
-    const quickActions = [
-        {
-            title: 'Create Course',
-            description: 'Add a new course to the platform',
-            icon: '➕',
-            href: '/admin/create-course',
-        },
-        {
-            title: 'Manage Lessons',
-            description: 'Organize course lessons',
-            icon: '📄',
-            href: '/admin/manage-lessons',
-        },
-        {
-            title: 'Manage Content',
-            description: 'Manage various content types (text, video, quiz, etc.)',
-            icon: '✒️',
-            href: '/admin/content',
-        },
-        {
-            title: 'Categories',
-            description: 'Manage course categories',
-            icon: '🗂️',
-            href: '/admin/categories',
-        },
-        {
-            title: 'Upload Media',
-            description: 'Upload and manage images/videos',
-            icon: '📤',
-            href: '/admin/media',
-        },
-        {
-            title: 'User Management',
-            description: 'Manage user accounts',
-            icon: '👤',
-            href: '/admin/users',
-        },
-        {
-            title: 'Settings',
-            description: 'Configure application settings',
-            icon: '⚙️',
-            href: '/admin/settings',
-        },
-    ];
-
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <div className="p-6 max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white p-6 rounded-lg shadow-lg"
+                >
+                    <h3 className="text-lg font-semibold mb-2">Total Courses</h3>
+                    <p className="text-3xl font-bold text-blue-600">{stats.totalCourses}</p>
+                </motion.div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statCards.map((stat, index) => (
-                    <motion.div
-                        key={stat.title}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`${stat.color} rounded-lg p-6 text-white shadow-lg`}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm opacity-80">{stat.title}</p>
-                                <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                            </div>
-                            <span className="text-3xl">{stat.icon}</span>
-                        </div>
-                    </motion.div>
-                ))}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white p-6 rounded-lg shadow-lg"
+                >
+                    <h3 className="text-lg font-semibold mb-2">Total Lessons</h3>
+                    <p className="text-3xl font-bold text-green-600">{stats.totalLessons}</p>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-white p-6 rounded-lg shadow-lg"
+                >
+                    <h3 className="text-lg font-semibold mb-2">Total Users</h3>
+                    <p className="text-3xl font-bold text-purple-600">{stats.totalUsers}</p>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-white p-6 rounded-lg shadow-lg"
+                >
+                    <h3 className="text-lg font-semibold mb-2">Total Revenue</h3>
+                    <p className="text-3xl font-bold text-yellow-600">
+                        ${stats.totalRevenue.toFixed(2)}
+                    </p>
+                </motion.div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {quickActions.map((action, index) => (
-                        <motion.div
-                            key={action.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow"
-                        >
-                            <Link href={action.href} className="block">
-                                <div className="flex items-center space-x-4">
-                                    <span className="text-3xl">{action.icon}</span>
-                                    <div>
-                                        <h3 className="font-semibold text-gray-800">{action.title}</h3>
-                                        <p className="text-sm text-gray-600 mt-1">{action.description}</p>
-                                    </div>
-                                </div>
-                            </Link>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link
+                    href="/admin/manage-courses"
+                    className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+                >
+                    <h3 className="text-xl font-semibold mb-2">Manage Courses</h3>
+                    <p className="text-gray-600">Create, edit, and delete courses</p>
+                </Link>
 
-            {/* Recent Activity */}
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h2>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <p className="text-gray-600">No recent activity to display.</p>
-                </div>
+                <Link
+                    href="/admin/manage-courses"
+                    className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+                >
+                    <h3 className="text-xl font-semibold mb-2">Manage Lessons</h3>
+                    <p className="text-gray-600">Organize and update lessons</p>
+                </Link>
+
+                <Link
+                    href="/admin/users"
+                    className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+                >
+                    <h3 className="text-xl font-semibold mb-2">Manage Users</h3>
+                    <p className="text-gray-600">View and manage user accounts</p>
+                </Link>
             </div>
         </div>
     );
-} 
+}

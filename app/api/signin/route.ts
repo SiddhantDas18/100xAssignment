@@ -34,7 +34,7 @@ export async function POST(req:NextRequest){
 
         const token = jwt.sign({
             id: user.id,
-            role: user.role
+            role: user.role.toUpperCase()
         }, SECRET)
 
         return NextResponse.json({

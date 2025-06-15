@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prismaClient from "@/lib/db";
 import middleware from "@/middleware/middleware";
 
-export async function PUT(req: NextRequest) {
+export async function POST(req: NextRequest) {
     try {
         const authResponse = await middleware(req);
 
@@ -16,40 +16,34 @@ export async function PUT(req: NextRequest) {
 
         const {
             lessonId,
-            title,
-            videoUrl,
-            description,
-            thumbnailUrl,
-            parentId,
+            type,
+            content,
+            order,
         } = await req.json();
 
-        if (!lessonId || !title) {
+        if (!lessonId || !type || content === undefined || content === null) {
             return NextResponse.json({
-                msg: "Lesson ID and title are required"
+                msg: "Lesson ID, type, and content are required"
             }, { status: 400 });
         }
 
-        const updatedLesson = await prismaClient.lesson.update({
-            where: {
-                id: lessonId,
-            },
+        const newContent = await prismaClient.content.create({
             data: {
-                title,
-                videoUrl: videoUrl || null,
-                description: description || null,
-                thumbnailUrl: thumbnailUrl || null,
-                parentId: parentId || null,
+                lessonId,
+                type,
+                content,
+                order: order || 0,
             },
         });
 
         return NextResponse.json({
             success: true,
-            message: "Lesson updated successfully",
-            lesson: updatedLesson,
-        }, { status: 200 });
+            message: "Content created successfully",
+            content: newContent,
+        }, { status: 201 });
 
     } catch (e) {
-        console.error("Error updating lesson:", e);
+        console.error("Error creating content:", e);
         return NextResponse.json({
             msg: (e as Error).message || "Something went wrong"
         }, { status: 500 });

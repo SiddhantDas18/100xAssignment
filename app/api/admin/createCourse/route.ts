@@ -2,46 +2,54 @@ import { NextRequest, NextResponse } from "next/server";
 import prismaClient from "@/lib/db";
 import middleware from "@/middleware/middleware";
 
-export async function POST(req:NextRequest){
-    try{
+export async function POST(req: NextRequest) {
+    try {
+        const authResponse = await middleware(req);
 
-        const authresponse = await middleware(req);
+        const userData = authResponse.headers.get("x-user-id");
 
-        const userData = authresponse.headers.get("x-user-id");
-        
-        if(!userData){
+        if (!userData || userData.split(':')[0] !== 'ADMIN') {
             return NextResponse.json({
-                msg:"User data not found"
-            }, { status: 401 })
+                msg: "Unauthorized"
+            }, { status: 401 });
         }
 
-        const [role, userId] = userData.split(':');
+        const {
+            title,
+            description,
+            price,
+            imageUrl,
+            categoryId,
+        } = await req.json();
 
-        if(role !== 'ADMIN') {
+        if (!title || !description || !price || !imageUrl || categoryId === null) {
             return NextResponse.json({
-                msg: "Unauthorized: Admin access required"
-            }, { status: 403 })
+                msg: "All fields are required"
+            }, { status: 400 });
         }
 
-        const {title,description,price, imageUrl} = await req.json();
-
-        const createCourse = await prismaClient.course.create({
-            data:{
-                title:title,
-                description:description,
-                price:price,
-                imageUrl: imageUrl
-            }
-        })
+        const newCourse = await prismaClient.course.create({
+            data: {
+                title,
+                description,
+                price,
+                imageUrl,
+                categories: {
+                    connect: { id: categoryId },
+                },
+            },
+        });
 
         return NextResponse.json({
-            msg:"Course created successfully",
-            course:createCourse
-        })
+            success: true,
+            message: "Course created successfully",
+            course: newCourse,
+        }, { status: 201 });
 
-    }catch(e){
+    } catch (e) {
+        console.error("Error creating course:", e);
         return NextResponse.json({
-            msg:(e as Error).message
-        })
+            msg: (e as Error).message || "Something went wrong"
+        }, { status: 500 });
     }
 }

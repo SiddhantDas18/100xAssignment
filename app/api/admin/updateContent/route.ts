@@ -15,41 +15,39 @@ export async function PUT(req: NextRequest) {
         }
 
         const {
+            contentId,
             lessonId,
-            title,
-            videoUrl,
-            description,
-            thumbnailUrl,
-            parentId,
+            type,
+            content,
+            order,
         } = await req.json();
 
-        if (!lessonId || !title) {
+        if (!contentId || !lessonId || !type || content === undefined || content === null) {
             return NextResponse.json({
-                msg: "Lesson ID and title are required"
+                msg: "Content ID, Lesson ID, type, and content are required"
             }, { status: 400 });
         }
 
-        const updatedLesson = await prismaClient.lesson.update({
+        const updatedContent = await prismaClient.content.update({
             where: {
-                id: lessonId,
+                id: contentId,
+                lessonId: lessonId,
             },
             data: {
-                title,
-                videoUrl: videoUrl || null,
-                description: description || null,
-                thumbnailUrl: thumbnailUrl || null,
-                parentId: parentId || null,
+                type,
+                content,
+                order: order || 0,
             },
         });
 
         return NextResponse.json({
             success: true,
-            message: "Lesson updated successfully",
-            lesson: updatedLesson,
+            message: "Content updated successfully",
+            content: updatedContent,
         }, { status: 200 });
 
     } catch (e) {
-        console.error("Error updating lesson:", e);
+        console.error("Error updating content:", e);
         return NextResponse.json({
             msg: (e as Error).message || "Something went wrong"
         }, { status: 500 });
