@@ -93,15 +93,37 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
         return;
       }
 
-      const response = await axios.post<{ success: boolean; url?: string; msg?: string }>('/api/stripe/checkout', {
+      const response = await axios.post<{ success: boolean; orderId?: string; amount?: number; currency?: string; key?: string; msg?: string }>('/api/razorpay/create-order', {
         courseId: course?.id,
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.data.success && response.data.url) {
-        // Redirect to Stripe Checkout page
-        window.location.href = response.data.url;
+      if (response.data.success && response.data.orderId) {
+        // Initialize Razorpay
+        const options = {
+          key: response.data.key,
+          amount: response.data.amount,
+          currency: response.data.currency,
+          name: "100xDevs",
+          description: course?.title,
+          order_id: response.data.orderId,
+          handler: function (response: any) {
+            // Handle successful payment
+            setPurchaseStatus('success');
+            router.push('/dashboard');
+          },
+          prefill: {
+            name: "User Name", // You can get this from user profile
+            email: "user@example.com", // You can get this from user profile
+          },
+          theme: {
+            color: "#2563EB"
+          }
+        };
+
+        const razorpay = new (window as any).Razorpay(options);
+        razorpay.open();
       } else {
         if (response.data.msg === "Course already purchased") {
           setPurchaseStatus('alreadyPurchased');

@@ -16,7 +16,7 @@ export async function GET(req:NextRequest){
 
         const [role, userId] = userData.split(':')
         const user = Number(userId)
-        console.log("Parsed User ID:", user);
+        console.log("Parsed User ID for myCourses query:", user);
 
         // Fetch purchases with course details
         const purchases = await prismaClient.purchase.findMany({

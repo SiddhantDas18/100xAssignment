@@ -117,6 +117,22 @@ model Purchase {
   course        Course    @relation(fields: [courseId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  order         Order?    @relation(fields: [orderId], references: [id])
+  orderId       Int?
+}
+
+model Order {
+  id            Int       @id @default(autoincrement()) @unique
+  orderId       String    @unique // Razorpay Order ID
+  userId        Int
+  courseId      Int
+  amount        Int
+  currency      String
+  status        String    @default("created") // created, paid, failed, refunded
+  notes         Json?     // Store additional metadata if needed
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  purchases     Purchase[]
 }
 
 model Progress {
