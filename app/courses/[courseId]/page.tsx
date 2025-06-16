@@ -53,7 +53,7 @@ export default function CourseDetailPage({ params: paramsPromise }: { params: Pr
               const myCoursesResponse = await axios.get<{ courses: any[] }>('/api/myCourses', {
                 headers: { Authorization: `Bearer ${token}` }
               });
-              const isAlreadyPurchased = myCoursesResponse.data.courses.some((c: any) => c.id === course.id.toString());
+              const isAlreadyPurchased = myCoursesResponse.data.courses.some((c: any) => Number(c.id) === course.id);
               console.log('isAlreadyPurchased:', isAlreadyPurchased); // Debug log
               if (isAlreadyPurchased) {
                 setPurchaseStatus('alreadyPurchased');

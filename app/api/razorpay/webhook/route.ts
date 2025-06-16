@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
             console.log('Extracted from Order Details:', { userId, courseId, amount });
 
             // Create purchase record and link it to the Order
-            await prismaClient.purchase.create({
+            const purchase = await prismaClient.purchase.create({
                 data: {
                     userId: userId,
                     courseId: courseId,
@@ -59,13 +59,15 @@ export async function POST(req: NextRequest) {
                 },
             });
             console.log(`Purchase recorded for user ${userId}, course ${courseId} with orderId ${orderDetails.id}`);
+            console.log('Purchase details:', purchase);
 
             // Update the Order status to 'paid'
-            await prismaClient.order.update({
+            const updatedOrder = await prismaClient.order.update({
                 where: { id: orderDetails.id },
                 data: { status: 'paid' },
             });
             console.log(`Order ${order} status updated to 'paid'.`);
+            console.log('Updated order details:', updatedOrder);
 
             return NextResponse.json({ received: true });
         }

@@ -36,7 +36,7 @@ export async function GET(req:NextRequest){
 
         // Transform the data to match the frontend Course interface
         const courses = purchases.map(purchase => ({
-            id: purchase.courseId.toString(),
+            id: purchase.courseId,
             title: purchase.course.title,
             description: purchase.course.description,
             imageUrl: '/default-course-image.jpg', // Default image since it's not in schema
